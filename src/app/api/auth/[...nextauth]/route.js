@@ -21,7 +21,10 @@ export const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+        console.log('DEBUG AUTH: Attempting login for:', credentials?.identifier);
+
         if (!credentials?.identifier || !credentials?.password) {
+          console.log('DEBUG AUTH: Missing credentials');
           throw new Error('Please enter email/phone and password');
         }
 
@@ -36,14 +39,19 @@ export const authOptions = {
         });
 
         if (!user || !user.password) {
+          console.log('DEBUG AUTH: User not found or no password');
           throw new Error('No user found with this email or phone number');
         }
 
+        console.log('DEBUG AUTH: User found, comparing password');
         const isValid = await bcrypt.compare(credentials.password, user.password);
 
         if (!isValid) {
+          console.log('DEBUG AUTH: Invalid password');
           throw new Error('Invalid password');
         }
+
+        console.log('DEBUG AUTH: Login successful for user', user.id);
 
         return {
           id: user.id,

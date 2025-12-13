@@ -43,6 +43,25 @@ export default function AdminOrders() {
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
+    const handleAcceptOrder = async (orderId) => {
+        try {
+            const res = await fetch(`/api/admin/orders/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'accepted' })
+            });
+            if (res.ok) {
+                // Update local state
+                setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'accepted' } : o));
+            } else {
+                alert('Failed to accept order');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('An error occurred');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -107,15 +126,23 @@ export default function AdminOrders() {
                                         <td className="px-6 py-4 font-bold text-amber-600">Rs. {order.totalAmount || order.book?.price}</td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${order.status === 'accepted' ? 'bg-blue-100 text-blue-700' :
-                                                    order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                                                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                            'bg-red-100 text-red-700'
+                                                order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                                                    order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-red-100 text-red-700'
                                                 }`}>
                                                 {order.status === 'accepted' && <CheckCircle className="w-3 h-3" />}
                                                 {order.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                            {order.status === 'pending' && (
+                                                <button
+                                                    onClick={() => handleAcceptOrder(order.id)}
+                                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                                                >
+                                                    Accept
+                                                </button>
+                                            )}
                                             <Link
                                                 href={`/dashboard/admin/messages?userId=${order.buyerId}`}
                                                 className="text-gray-400 hover:text-amber-600 inline-flex items-center gap-1 text-xs font-medium border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition"
@@ -127,11 +154,6 @@ export default function AdminOrders() {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
-                    {/* Pagination placeholder */}
-                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center text-xs text-gray-500">
-                        <span>Showing {filteredOrders.length} orders</span>
-                        {/* Could add pagination here */}
                     </div>
                 </div>
             )}

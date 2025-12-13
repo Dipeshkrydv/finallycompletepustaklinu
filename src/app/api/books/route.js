@@ -108,6 +108,7 @@ export async function POST(req) {
     const category = formData.get('category');
     const keywords = formData.get('keywords');
     const discount = formData.get('discount') || 0;
+    console.log('DEBUG BOOK CREATE - Discount received:', discount);
     const images = formData.getAll('images'); // Array of files
 
     if (!title || !pages || !price || !description || !category) {
