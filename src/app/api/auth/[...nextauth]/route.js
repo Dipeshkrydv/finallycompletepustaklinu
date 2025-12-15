@@ -9,6 +9,7 @@ import FacebookProviderModule from 'next-auth/providers/facebook';
 
 const GoogleProvider = GoogleProviderModule.default || GoogleProviderModule;
 const FacebookProvider = FacebookProviderModule.default || FacebookProviderModule;
+import { Op } from 'sequelize';
 import bcrypt from 'bcrypt';
 import { User } from '@/models/index';
 
@@ -21,14 +22,11 @@ export const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        console.log('DEBUG AUTH: Attempting login for:', credentials?.identifier);
-
         if (!credentials?.identifier || !credentials?.password) {
-          console.log('DEBUG AUTH: Missing credentials');
           throw new Error('Please enter email/phone and password');
         }
 
-        const { Op } = require('sequelize');
+        // Op imported at top level
         const user = await User.findOne({
           where: {
             [Op.or]: [
@@ -39,19 +37,14 @@ export const authOptions = {
         });
 
         if (!user || !user.password) {
-          console.log('DEBUG AUTH: User not found or no password');
           throw new Error('No user found with this email or phone number');
         }
 
-        console.log('DEBUG AUTH: User found, comparing password');
         const isValid = await bcrypt.compare(credentials.password, user.password);
 
         if (!isValid) {
-          console.log('DEBUG AUTH: Invalid password');
           throw new Error('Invalid password');
         }
-
-        console.log('DEBUG AUTH: Login successful for user', user.id);
 
         return {
           id: user.id,
@@ -68,6 +61,15 @@ export const authOptions = {
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID || 'mock_id',
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET || 'mock_secret',
+      authorization: {
+        params: {
+          scope: 'public_profile',
+        },
+      },
+      userinfo: {
+        url: "https://graph.facebook.com/me",
+        params: { fields: "id,name,picture" },
+      },
     }),
   ],
   callbacks: {
@@ -100,7 +102,10 @@ export const authOptions = {
           token.id = dbUser.id;
           token.role = dbUser.role;
           token.phone = dbUser.phone;
-          token.requiresProfileCompletion = !dbUser.role || !dbUser.phone;
+          token.address = dbUser.address;
+          token.city = dbUser.city;
+          token.province = dbUser.province;
+          token.requiresProfileCompletion = !dbUser.role || !dbUser.phone || !dbUser.address;
         }
       }
 
@@ -115,6 +120,10 @@ export const authOptions = {
       if (token) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.phone = token.phone;
+        session.user.address = token.address;
+        session.user.city = token.city;
+        session.user.province = token.province;
         session.user.requiresProfileCompletion = token.requiresProfileCompletion;
       }
       return session;
@@ -127,6 +136,17 @@ export const authOptions = {
     strategy: 'jwt',
   },
   secret: process.env.NEXTAUTH_SECRET,
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production' && process.env.NEXTAUTH_URL?.startsWith('https'),
+      },
+    },
+  },
 };
 
 const handler = NextAuth(authOptions);

@@ -18,7 +18,6 @@ export default function ProfilePage() {
         city: '',
         state: '',
         province: '',
-        pincode: '',
         currentPassword: '',
         newPassword: '',
         confirmNewPassword: ''
@@ -45,7 +44,6 @@ export default function ProfilePage() {
                     city: data.city || '',
                     state: data.state || '',
                     province: data.province || '',
-                    pincode: data.pincode || '',
                 }));
             } else {
                 toast.error('Failed to load profile data');
@@ -143,7 +141,7 @@ export default function ProfilePage() {
                             <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
                             <input
                                 type="email"
-                                value={session?.user?.email}
+                                value={session?.user?.email || ''}
                                 disabled
                                 className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed"
                             />
@@ -221,16 +219,7 @@ export default function ProfilePage() {
                                 className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition text-gray-900"
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Pincode / Zip</label>
-                            <input
-                                type="text"
-                                name="pincode"
-                                value={formData.pincode}
-                                onChange={handleChange}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition text-gray-900"
-                            />
-                        </div>
+
                     </div>
                 </div>
 

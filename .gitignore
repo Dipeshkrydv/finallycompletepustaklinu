@@ -44,3 +44,4 @@ next-env.d.ts
 f.zip
 *.zip
 database.sqlite
+public/uploads

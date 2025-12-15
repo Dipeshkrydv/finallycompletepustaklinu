@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { User, Book, Order, Cart, Message } from '@/models/index'; // Import related models for cascade delete if not handled by DB
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 // Helper to check admin
 async function isAdmin() {
@@ -34,11 +34,33 @@ export async function GET(req) {
             return NextResponse.json(user);
         }
 
-        const users = await User.findAll({
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '20');
+        const offset = (page - 1) * limit;
+
+        const role = searchParams.get('role');
+        const whereClause = {};
+        if (role) {
+            whereClause.role = role;
+        }
+
+        const { count, rows } = await User.findAndCountAll({
+            where: whereClause,
             attributes: { exclude: ['password'] },
-            order: [['createdAt', 'DESC']]
+            order: [['createdAt', 'DESC']],
+            limit,
+            offset
         });
-        return NextResponse.json(users);
+
+        return NextResponse.json({
+            users: rows,
+            pagination: {
+                total: count,
+                page,
+                limit,
+                totalPages: Math.ceil(count / limit)
+            }
+        });
     } catch (error) {
         console.error('Admin users fetch error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -69,12 +91,28 @@ export async function DELETE(req) {
             return NextResponse.json({ error: 'Cannot delete your own admin account' }, { status: 403 });
         }
 
-        // Setup cascade delete logic manually if Sequelize doesn't handle it for SQLite nicely
-        // Often simpler to just destroy the user and let DB constraints fail or succeed
-        // But for completeness, let's destroy the user.
+        // Manual Cascade Delete to ensure clean removal
+        // 1. Delete user's Cart
+        await Cart.destroy({ where: { buyerId: user.id } });
+
+        // 2. Delete Messages (sent and received)
+        await Message.destroy({ where: { senderId: user.id } });
+        await Message.destroy({ where: { receiverId: user.id } });
+
+        // 3. Delete Books listed by user
+        await Book.destroy({ where: { sellerId: user.id } });
+
+        // 4. Handle Orders (Optional: Delete or Anonymize? Deleting for clean slate)
+        // Deleting orders where user is buyer
+        await Order.destroy({ where: { buyerId: user.id } });
+        // NOTE: Orders where user is seller are linked to Books, mostly handled by Book deletion if cascaded there, 
+        // but explicit check is safer.
+        // await Order.destroy({ where: { sellerId: user.id } }); // Not directly linked in some schemas, relying on book link.
+
+        // 5. Finally, destroy Users
         await user.destroy();
 
-        return NextResponse.json({ message: 'User deleted successfully' });
+        return NextResponse.json({ message: 'User and all related data deleted successfully' });
     } catch (error) {
         console.error('Admin user delete error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

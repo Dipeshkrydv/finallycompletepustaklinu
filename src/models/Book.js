@@ -47,6 +47,14 @@ const Book = sequelize.define('Book', {
     type: DataTypes.ENUM('available', 'on-hold', 'sold'),
     defaultValue: 'available',
   }
+}, {
+  tableName: 'Books',
+  indexes: [
+    { fields: ['sellerId'] },
+    { fields: ['category'] },
+    { fields: ['status'] },
+    { fields: ['title'] }
+  ]
 });
 
 export default Book;

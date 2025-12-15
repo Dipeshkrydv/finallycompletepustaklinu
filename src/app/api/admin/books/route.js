@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { Book, User } from '@/models/index';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { Book, User, Cart, Order } from '@/models/index';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 // Helper to check admin
 async function isAdmin() {
@@ -15,11 +15,27 @@ export async function GET(req) {
     }
 
     try {
-        const books = await Book.findAll({
+        const { searchParams } = new URL(req.url);
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '20');
+        const offset = (page - 1) * limit;
+
+        const { count, rows } = await Book.findAndCountAll({
             include: [{ model: User, as: 'seller', attributes: ['name', 'email'] }],
-            order: [['createdAt', 'DESC']]
+            order: [['createdAt', 'DESC']],
+            limit,
+            offset
         });
-        return NextResponse.json(books);
+
+        return NextResponse.json({
+            books: rows,
+            pagination: {
+                total: count,
+                page,
+                limit,
+                totalPages: Math.ceil(count / limit)
+            }
+        });
     } catch (error) {
         console.error('Admin books fetch error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -44,6 +60,16 @@ export async function DELETE(req) {
             return NextResponse.json({ error: 'Book not found' }, { status: 404 });
         }
 
+        // --- MANUAL CASCADE DELETE TO PREVENT FOREIGN KEY ERRORS ---
+
+        // 1. Remove from Carts
+        await Cart.destroy({ where: { bookId: id } });
+
+        // 2. Remove Orders (or set to NULL if you prefer keeping history, but usually admin delete means FULL WIPE)
+        // For strict cleanup, we delete orders related to this book
+        await Order.destroy({ where: { bookId: id } });
+
+        // 3. Finally Delete Book
         await book.destroy();
 
         return NextResponse.json({ message: 'Book deleted successfully' });

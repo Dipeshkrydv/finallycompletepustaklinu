@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
-import { BookOpen, Search, ShoppingCart, User, LogOut, Menu, X, Heart, Home, Grid, MessageSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BookOpen, Search, ShoppingCart, User, LogOut, Menu, X, Heart, Home, Grid, MessageSquare, Bell } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
+import DonationFooter from '@/components/DonationFooter';
 
 export default function BuyerLayout({ children }) {
     const router = useRouter();
@@ -13,6 +14,23 @@ export default function BuyerLayout({ children }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [hasNotifications, setHasNotifications] = useState(false);
+
+    useEffect(() => {
+        if (session?.user) {
+            // Check for notifications to show badge
+            fetch('/api/orders')
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        // Show dot if there are any completed/updated orders
+                        const hasAlerts = data.some(o => ['accepted', 'rejected', 'cancelled', 'delivered'].includes(o.status));
+                        setHasNotifications(hasAlerts);
+                    }
+                })
+                .catch(err => console.error("Nav notification check failed", err));
+        }
+    }, [session]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -66,12 +84,18 @@ export default function BuyerLayout({ children }) {
                                 <Grid className="w-5 h-5" />
                                 <span className="text-xs font-medium">Categories</span>
                                 {/* Simple Dropdown for Categories */}
-                                <div className="absolute top-10 right-0 w-48 bg-white rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
-                                    <div className="py-2">
-                                        {['Fiction', 'Non-Fiction', 'Science', 'History', 'Technology', 'Arts'].map((cat) => (
+                                <div className="absolute top-10 right-0 w-56 bg-white rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
+                                    <div className="py-2 max-h-[80vh] overflow-y-auto">
+                                        {[
+                                            'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5',
+                                            'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10',
+                                            'Class 11 Science', 'Class 11 Commerce',
+                                            'Class 12 Science', 'Class 12 Commerce',
+                                            'Other'
+                                        ].map((cat) => (
                                             <Link
                                                 key={cat}
-                                                href={`/dashboard/buyer?category=${cat}`}
+                                                href={`/dashboard/buyer?q=${encodeURIComponent(cat)}`} // Changing param to q to ensure search works with current logic
                                                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700"
                                             >
                                                 {cat}
@@ -86,9 +110,14 @@ export default function BuyerLayout({ children }) {
                                 <span className="text-xs font-medium">Orders</span>
                             </Link>
 
-                            <Link href="/dashboard/buyer/messages" className="flex flex-col items-center gap-1 text-gray-600 hover:text-amber-600 transition">
-                                <MessageSquare className="w-5 h-5" />
-                                <span className="text-xs font-medium">Chat</span>
+                            <Link href="/dashboard/buyer/notifications" className="relative flex flex-col items-center gap-1 text-gray-600 hover:text-amber-600 transition">
+                                <div className="relative">
+                                    <Bell className="w-5 h-5" />
+                                    {hasNotifications && (
+                                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                                    )}
+                                </div>
+                                <span className="text-xs font-medium">Notices</span>
                             </Link>
 
                             {/* Profile Dropdown */}
@@ -155,9 +184,6 @@ export default function BuyerLayout({ children }) {
                             </Link>
                             <Link href="/dashboard/buyer/orders" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700 font-medium">
                                 <ShoppingBagIcon className="w-5 h-5 text-gray-400" /> My Orders
-                            </Link>
-                            <Link href="/dashboard/buyer/messages" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-gray-700 font-medium">
-                                <MessageSquare className="w-5 h-5 text-gray-400" /> Support Chat
                             </Link>
                             <button onClick={handleLogout} className="flex items-center gap-3 p-3 rounded-lg hover:bg-red-50 text-red-600 font-medium w-full text-left">
                                 <LogOut className="w-5 h-5" /> Logout

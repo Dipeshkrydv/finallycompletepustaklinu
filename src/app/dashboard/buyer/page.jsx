@@ -3,10 +3,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ShoppingCart, MapPin, Search, Filter, BookOpen, User, X, Trash2, CheckCircle, Star, TrendingUp, Heart } from 'lucide-react';
+import { ShoppingCart, MapPin, Search, Filter, BookOpen, User, X, Trash2, CheckCircle, Star, TrendingUp, Heart, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Link from 'next/link';
 import Image from 'next/image';
+import Testimonials from '@/components/Testimonials';
+import DonationFooter from '@/components/DonationFooter';
 
 export default function BuyerDashboard() {
   const { data: session } = useSession();
@@ -120,16 +122,14 @@ export default function BuyerDashboard() {
       return;
     }
     const basePrice = calculateDiscountedPrice(book.price, book.discount);
-    // Calculate 10% platform fee (donation) on the discounted price
-    const platformFee = Math.round(basePrice * 0.10);
-    const finalPrice = basePrice + platformFee;
+    // REMOVED: 10% platform fee calculation at cart level
+    const finalPrice = basePrice;
 
     const newCart = [...cart, {
       ...book,
       bookId: book.id,
-      price: finalPrice, // Total price including fee
-      basePrice: basePrice, // Price before fee
-      platformFee: platformFee, // The fee amount
+      price: finalPrice, // Now just the discounted price
+      basePrice: basePrice,
       originalPrice: book.price
     }];
     setCart(newCart);
@@ -158,6 +158,10 @@ export default function BuyerDashboard() {
     }
     if (isCheckingOut) return;
     setIsCheckingOut(true);
+
+    // Calculate total for confirmation page
+    const totalAmount = cart.reduce((sum, item) => sum + Number(item.price), 0);
+
     try {
       const res = await fetch('/api/orders/buy', {
         method: 'POST',
@@ -169,7 +173,8 @@ export default function BuyerDashboard() {
         toast.success('Order placed successfully!');
         setCart([]); // Clear cart
         setIsCartOpen(false);
-        router.push('/dashboard/buyer/orders/confirmation');
+        // Pass total amount to confirmation page for donation calculation
+        router.push(`/dashboard/buyer/orders/confirmation?amount=${totalAmount}`);
       } else {
         const data = await res.json();
         toast.error(data.error || 'Failed to place order');
@@ -209,7 +214,7 @@ export default function BuyerDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="text-gray-600 text-sm">
             {urlQuery ? (
-              <span>Results for <span className="font-bold text-gray-900">"{urlQuery}"</span></span>
+              <span>Results for <span className="font-bold text-gray-900">&quot;{urlQuery}&quot;</span></span>
             ) : urlCategory ? (
               <span>Category: <span className="font-bold text-gray-900">{urlCategory}</span></span>
             ) : (
@@ -245,110 +250,123 @@ export default function BuyerDashboard() {
 
       {/* Hero Section - Only show when no search/filter active */}
       {!urlQuery && !urlCategory && !selectedCity && (
-        <div className="mb-8 bg-amber-900 text-white relative overflow-hidden">
-          <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80')] bg-cover bg-center mix-blend-overlay"></div>
-          <div className="max-w-7xl mx-auto px-6 py-16 md:py-24 relative z-10 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Discover Your Next Favorite Book</h1>
-            <p className="text-amber-100 text-lg max-w-2xl mx-auto mb-8">Buy, sell, and exchange pre-loved books within your community. Sustainable reading starts here.</p>
-            <div className="flex justify-center gap-4">
-              <button onClick={() => {
-                const el = document.getElementById('book-grid');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }} className="px-8 py-3 bg-white text-amber-900 font-bold rounded-full hover:bg-amber-50 transition shadow-lg">
-                Start Browsing
-              </button>
+        <>
+          <div className="mb-8 bg-amber-900 text-white relative overflow-hidden">
+            <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80')] bg-cover bg-center mix-blend-overlay"></div>
+            <div className="max-w-7xl mx-auto px-6 py-16 md:py-24 relative z-10 text-center">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">Discover Your Next Favorite Book</h1>
+              <p className="text-amber-100 text-lg max-w-2xl mx-auto mb-8">Buy, sell, and exchange pre-loved books within your community. Sustainable reading starts here.</p>
+              <div className="flex justify-center gap-4">
+                <button onClick={() => {
+                  const el = document.getElementById('book-grid');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }} className="px-8 py-3 bg-white text-amber-900 font-bold rounded-full hover:bg-amber-50 transition shadow-lg">
+                  Start Browsing
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+
+        </>
       )}
 
       {/* Cart Drawer */}
+      {/* Cart Box (Simple, Short & Sweet) */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setIsCartOpen(false)}></div>
-          <div className="relative bg-white w-full max-w-md h-full shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-amber-600" /> Your Cart ({cart.length})
+        <div className="fixed inset-0 z-50 flex justify-end items-start pt-20 px-4 sm:pr-8 pointer-events-none">
+          {/* Backdrop (invisible but clickable to close) */}
+          <div className="absolute inset-0 pointer-events-auto" onClick={() => setIsCartOpen(false)}></div>
+
+          {/* The Sweet Box */}
+          <div className="pointer-events-auto relative bg-white w-80 max-h-[75vh] rounded-3xl shadow-2xl flex flex-col font-sans border border-gray-100 transform transition-all animate-in slide-in-from-right-4 fade-in duration-200">
+
+            {/* Header */}
+            <div className="px-5 py-3 border-b border-gray-50 flex justify-between items-center bg-white/50 backdrop-blur rounded-t-3xl z-10">
+              <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4 text-amber-500" />
+                <span>My Cart <span className="text-gray-400 font-normal">({cart.length})</span></span>
               </h2>
-              <button onClick={() => setIsCartOpen(false)} className="p-2 hover:bg-gray-200 rounded-full transition">
-                <X className="w-5 h-5 text-gray-500" />
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className="w-7 h-7 flex items-center justify-center bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white">
+            {/* Scrollable Items */}
+            <div className="overflow-y-auto px-5 py-2 space-y-3 flex-1">
               {cart.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
-                  <ShoppingCart className="w-16 h-16 mb-4 opacity-10" />
-                  <p className="text-lg font-medium">Your cart is empty</p>
-                  <p className="text-sm">Looks like you haven't added any books yet.</p>
-                  <button onClick={() => setIsCartOpen(false)} className="mt-6 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition">
-                    Continue Shopping
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <ShoppingCart className="w-6 h-6 text-amber-300" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-500">Cart is empty</p>
+                  <button onClick={() => setIsCartOpen(false)} className="mt-4 text-xs font-bold text-amber-600 hover:text-amber-700">
+                    Add Books
                   </button>
                 </div>
               ) : (
                 cart.map(item => (
-                  <div key={item.id} className="flex gap-4 p-3 bg-gray-50 border border-gray-100 rounded-xl hover:border-amber-200 transition group">
-                    <div className="w-20 h-24 flex-shrink-0 bg-gray-200 rounded-md overflow-hidden">
-                      <img src={getBookImage(item)} alt={item.title} className="w-full h-full object-cover" />
+                  <div key={item.id} className="flex gap-3 group py-2 border-b border-gray-50 last:border-0 relative">
+                    <div className="w-12 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-100">
+                      <img
+                        src={getBookImage(item)}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.src = '/placeholder-book.png'; }}
+                      />
                     </div>
-                    <div className="flex-1 flex flex-col justify-between">
-                      <div>
-                        <h3 className="font-semibold text-gray-800 line-clamp-1">{item.title}</h3>
-                        <p className="text-xs text-gray-500">Seller: {item.seller?.name}</p>
-                      </div>
-                      <div className="flex justify-between items-end mt-2">
-                        <div className="flex flex-col items-start w-full">
-                          {item.originalPrice && item.originalPrice > item.basePrice && (
-                            <span className="text-xs text-gray-400 line-through">Rs. {item.originalPrice}</span>
-                          )}
-                          <div className="flex justify-between w-full text-xs text-gray-500">
-                            <span>Base: Rs. {item.basePrice}</span>
-                            <span>+ {item.platformFee} (Fee)</span>
-                          </div>
-                          <p className="text-amber-700 font-bold">Total: Rs. {item.price}</p>
-                        </div>
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-gray-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg transition ml-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <h3 className="font-semibold text-xs text-gray-800 line-clamp-1 pr-5">{item.title}</h3>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">{item.seller?.name}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-900">Rs. {Number(item.price)}</span>
+                        {item.originalPrice > item.price && (
+                          <span className="text-[10px] text-gray-300 line-through">Rs. {item.originalPrice}</span>
+                        )}
                       </div>
                     </div>
+                    <button
+                      onClick={() => removeFromCart(item.id)}
+                      className="absolute top-1 right-0 text-gray-300 hover:text-red-500 transition p-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 ))
               )}
             </div>
 
+            {/* Footer */}
             {cart.length > 0 && (
-              <div className="p-6 border-t border-gray-100 bg-gray-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                <div className="flex justify-between items-center mb-6">
-                  <span className="text-gray-600 font-medium text-sm">Total (with 10% Donation)</span>
-                  <span className="text-xl font-bold text-gray-900">
+              <div className="p-4 bg-gray-50/50 rounded-b-3xl border-t border-gray-50">
+                <div className="flex justify-between items-end mb-3 px-1">
+                  <span className="text-xs text-gray-500 font-medium">Subtotal</span>
+                  <span className="text-base font-extrabold text-gray-900">
                     Rs. {cart.reduce((sum, item) => sum + Number(item.price), 0)}
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="flex gap-2">
+                  <button
+                    onClick={clearCart}
+                    className="px-3 py-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
+                    title="Clear Cart"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={buyBooks}
                     disabled={isCheckingOut}
-                    className="w-full py-3.5 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition shadow-lg shadow-amber-200 flex justify-center items-center gap-2 active:scale-95 transform duration-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="flex-1 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition shadow-lg hover:shadow-xl flex justify-center items-center gap-2 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     {isCheckingOut ? (
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Processing
+                      </span>
                     ) : (
-                      <>Checkout Now <CheckCircle className="w-5 h-5" /></>
+                      <>Checkout <ArrowRight className="w-3 h-3" /></>
                     )}
-                  </button>
-                  <button
-                    onClick={clearCart}
-                    className="w-full py-2.5 text-red-500 font-medium text-sm hover:underline"
-                  >
-                    Empty Cart
                   </button>
                 </div>
               </div>
@@ -378,7 +396,7 @@ export default function BuyerDashboard() {
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300">
             <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900">No books found</h3>
-            <p className="text-gray-500">We couldn't find any books matching your criteria.</p>
+            <p className="text-gray-500">We couldn&apos;t find any books matching your criteria.</p>
             <button
               onClick={() => {
                 window.history.replaceState(null, '', '/dashboard/buyer');
@@ -474,6 +492,15 @@ export default function BuyerDashboard() {
           </div>
         )}
       </div>
+
+      {/* Testimonials Section - Moved to Bottom */}
+      <div className="max-w-7xl mx-auto px-6 pb-12 mt-12">
+        <Testimonials />
+        <div className="mt-12">
+          <DonationFooter role="buyer" />
+        </div>
+      </div>
+
     </div>
   );
 }

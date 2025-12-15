@@ -15,16 +15,16 @@ export async function PUT(req, { params }) {
 
     const order = await Order.findByPk(id);
     if (!order) {
-      console.log(`Cancel Order: Order ${id} not found`);
+
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    console.log(`Cancel Order: Found order ${id}, Status: ${order.status}, User: ${session.user.id}, Buyer: ${order.buyerId}`);
+
 
     // Allow buyer to cancel or confirm delivery
     if (session.user.role === 'buyer') {
       if (order.buyerId !== session.user.id) {
-        console.log(`Update Order: Unauthorized buyer`);
+
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
       }
 
@@ -34,7 +34,6 @@ export async function PUT(req, { params }) {
         await order.save();
 
         // Revert book status to available
-        console.log(`Cancel Order: Reverting Book ${order.bookId} to available`);
         await Book.update({ status: 'available' }, { where: { id: order.bookId } });
 
         return NextResponse.json(order);
@@ -46,7 +45,6 @@ export async function PUT(req, { params }) {
         await order.save();
 
         // Mark book as sold instead of deleting so history is preserved
-        console.log(`Order Delivered: Marking Book ${order.bookId} as sold`);
         const book = await Book.findByPk(order.bookId);
         if (book) {
           await book.update({ status: 'sold' });
@@ -56,7 +54,6 @@ export async function PUT(req, { params }) {
       }
 
       else {
-        console.log(`Update Order: Invalid state transition. Request status: ${status}, Current: ${order.status}`);
         return NextResponse.json({ error: 'Cannot update this order state' }, { status: 400 });
       }
     }

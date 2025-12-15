@@ -31,7 +31,26 @@ const Order = sequelize.define('Order', {
   adminNote: {
     type: DataTypes.TEXT,
     allowNull: true,
+  },
+  followUpStartTime: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  lastFollowUpSentAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  isCompleted: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
   }
+}, {
+  tableName: 'Orders',
+  indexes: [
+    { fields: ['buyerId'] },
+    { fields: ['status'] },
+    { fields: ['bookId'] }
+  ]
 });
 
 export default Order;

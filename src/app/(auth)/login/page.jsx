@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-toastify';
@@ -27,8 +27,24 @@ export default function Login() {
       setLoading(false);
     } else {
       toast.success('Logged in successfully!');
-      router.push('/');
-      router.refresh();
+
+      // RELIABLE & FAST: Poll for session updates
+      let attempts = 0;
+      const checkSession = async () => {
+        const session = await getSession();
+        if (session?.user?.role) {
+          window.location.href = `/dashboard/${session.user.role}`;
+        } else if (session?.user?.requiresProfileCompletion) {
+          window.location.href = '/complete-profile';
+        } else if (attempts < 50) { // 50 * 100ms = 5 seconds max
+          attempts++;
+          setTimeout(checkSession, 100); // Check every 100ms for instant feel
+        } else {
+          window.location.href = '/';
+        }
+      };
+
+      checkSession();
     }
   };
 
@@ -83,7 +99,7 @@ export default function Login() {
             disabled={loading}
             className="w-full bg-amber-600 text-white py-3 rounded-lg font-semibold hover:bg-amber-700 transition flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing in...' : (
+            {loading ? 'Redirecting...' : (
               <>
                 Sign In <ArrowRight className="w-5 h-5" />
               </>
@@ -122,7 +138,7 @@ export default function Login() {
 
         <div className="mt-8 text-center">
           <p className="text-gray-600">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/register" className="text-amber-600 font-semibold hover:text-amber-700 hover:underline">
               Create Account
             </Link>

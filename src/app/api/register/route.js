@@ -1,14 +1,28 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { User } from '@/models/index';
+import { User, Otp } from '@/models/index';
+import { Op } from 'sequelize';
 
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { name, email, phone, password, role, address, city, state, pincode, latitude, longitude, province } = body;
+    const { name, email, phone, password, role, address, city, state, pincode, latitude, longitude, province, otp } = body;
 
-    if (!name || !email || !phone || !password || !role) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!name || !email || !phone || !password || !role || !otp) {
+      return NextResponse.json({ error: 'Missing required fields (including OTP)' }, { status: 400 });
+    }
+
+    // Verify OTP
+    const otpRecord = await Otp.findOne({
+      where: {
+        email,
+        otp,
+        expiresAt: { [Op.gt]: new Date() } // Check if not expired
+      }
+    });
+
+    if (!otpRecord) {
+      return NextResponse.json({ error: 'Invalid or expired OTP. Please verify your email again.' }, { status: 400 });
     }
 
     const existingUserByPhone = await User.findOne({ where: { phone } });
@@ -41,7 +55,10 @@ export async function POST(req) {
       longitude,
       province,
     });
-    console.log('User created:', newUser.toJSON());
+
+
+    // Delete used OTP
+    await otpRecord.destroy();
 
     return NextResponse.json({ message: 'User created successfully', user: { id: newUser.id, name: newUser.name, role: newUser.role } }, { status: 201 });
   } catch (error) {

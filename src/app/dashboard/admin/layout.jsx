@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, Package, Users, BookOpen, LogOut, Menu, X, Settings } from 'lucide-react';
+import { Shield, LayoutDashboard, Package, Users, BookOpen, LogOut, Menu, X, Settings, MessageSquare, RefreshCw } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 
 export default function AdminLayout({ children }) {
@@ -11,11 +11,33 @@ export default function AdminLayout({ children }) {
     const { data: session } = useSession();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+    // "Cron" Job Simulation: Check for order follow-ups every 60 seconds
+    useEffect(() => {
+        const checkOrders = async () => {
+            try {
+                await fetch('/api/cron/check-orders');
+            } catch (error) {
+                console.error('Cron check failed', error);
+            }
+        };
+
+        // Run immediately on mount, then interval
+        checkOrders();
+        const interval = setInterval(checkOrders, 60 * 1000);
+
+        return () => clearInterval(interval);
+    }, []);
+
     const menuItems = [
         { name: 'Overview', icon: LayoutDashboard, path: '/dashboard/admin' },
         { name: 'Orders', icon: Package, path: '/dashboard/admin/orders' },
-        { name: 'Users Management', icon: Users, path: '/dashboard/admin/users' },
+
+        { name: 'Buyers', icon: Users, path: '/dashboard/admin/users?role=buyer' },
+        { name: 'Sellers', icon: Users, path: '/dashboard/admin/users?role=seller' },
         { name: 'Books Inventory', icon: BookOpen, path: '/dashboard/admin/books' },
+        // { name: 'Buyer Chats', icon: MessageSquare, path: '/dashboard/admin/messages/buyers' }, // Removed
+        { name: 'Seller Chats', icon: MessageSquare, path: '/dashboard/admin/messages/sellers' },
+        { name: 'Automation', icon: RefreshCw, path: '/dashboard/admin/automation' }, // New Controller
     ];
 
     const isActive = (path) => {
@@ -48,8 +70,8 @@ export default function AdminLayout({ children }) {
                                 key={item.path}
                                 href={item.path}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive(item.path)
-                                        ? 'bg-amber-50 text-amber-700 font-bold shadow-sm'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    ? 'bg-amber-50 text-amber-700 font-bold shadow-sm'
+                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                     }`}
                             >
                                 <item.icon className={`w-5 h-5 ${isActive(item.path) ? 'text-amber-600' : 'text-gray-400 group-hover:text-gray-600'}`} />

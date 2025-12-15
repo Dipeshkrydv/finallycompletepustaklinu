@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { User } from '@/models/index';
@@ -56,14 +57,26 @@ export async function PUT(req) {
         };
 
         // Handle password change if requested
+        // Handle password change if requested
         if (newPassword) {
-            if (!currentPassword) {
-                return NextResponse.json({ error: 'Current password is required to set a new password' }, { status: 400 });
-            }
-
-            const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
-            if (!isPasswordValid) {
-                return NextResponse.json({ error: 'Incorrect current password' }, { status: 400 });
+            // If user has a password (email/pass login), verify it
+            if (user.password) {
+                if (!currentPassword) {
+                    return NextResponse.json({ error: 'Current password is required' }, { status: 400 });
+                }
+                const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+                if (!isPasswordValid) {
+                    return NextResponse.json({ error: 'Incorrect current password' }, { status: 400 });
+                }
+            } else {
+                // User has no password (e.g. Google Login). 
+                // We can either allow setting it directly OR require them to use a "Set Password" flow.
+                // For now, if they are providing newPassword, we assume they want to set it.
+                // BUT strict security might imply we shouldn't let them just set it without re-auth.
+                // However, since they are logged in (session valid), it's generally OK to "Add Password".
+                // But wait, the frontend might demand currentPassword.
+                // If currentPassword IS provided but user.password is null, comparing fails.
+                // So we just skip comparison if user.password is null.
             }
 
             updateData.password = await bcrypt.hash(newPassword, 10);

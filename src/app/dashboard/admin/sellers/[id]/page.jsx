@@ -61,7 +61,7 @@ export default function SellerDetailPage() {
                             </div>
                         </div>
                         <Link
-                            href={`/dashboard/admin/messages?userId=${user.id}`}
+                            href={`/dashboard/admin/messages/sellers?userId=${user.id}`}
                             className="bg-amber-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-amber-700 transition flex items-center gap-2 shadow-sm"
                         >
                             <MessageSquare className="w-4 h-4" /> Message Seller

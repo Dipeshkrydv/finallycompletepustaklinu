@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { BookOpen, MessageSquare, User, LogOut, Menu, X, Package } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
+import DonationFooter from '@/components/DonationFooter';
 
 export default function SellerLayout({ children }) {
     const router = useRouter();
@@ -108,6 +109,7 @@ export default function SellerLayout({ children }) {
             </header>
 
             {children}
+            <DonationFooter role="seller" />
         </div>
     );
 }

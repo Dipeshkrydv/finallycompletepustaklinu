@@ -152,7 +152,7 @@ export default function MyOrders() {
           </div>
         ) : orders.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
-            <p className="text-gray-500">You haven't placed any orders yet.</p>
+            <p className="text-gray-500">You haven&apos;t placed any orders yet.</p>
             <Link href="/dashboard/buyer" className="text-amber-600 font-medium mt-2 inline-block hover:underline">
               Browse Books
             </Link>
@@ -189,19 +189,52 @@ export default function MyOrders() {
                     </button>
                   )}
                   {order.status === 'accepted' && (
-                    <div className="flex flex-col gap-2">
-                      <Link
-                        href={`/dashboard/buyer/messages?initialMessage=Reason for cancellation of Order #${order.id}: `}
-                        className="px-4 py-2 border border-amber-200 text-amber-600 rounded-lg text-sm font-medium hover:bg-amber-50 transition text-center"
-                      >
-                        Request Cancellation
-                      </Link>
-                      <button
-                        onClick={() => initiateSuccess(order.id)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition shadow-sm flex items-center justify-center gap-1"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Did you receive it?
-                      </button>
+                    <div className="flex flex-col gap-4 w-full">
+                      {/* Seller Details Block */}
+                      <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+                        <h4 className="font-bold text-green-800 mb-2 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4" /> Admin Confirmed!
+                        </h4>
+                        <p className="text-sm text-green-700 mb-2">You can now contact the seller directly:</p>
+                        <div className="bg-white p-3 rounded-lg border border-green-100 text-sm space-y-1">
+                          <p><span className="font-semibold text-gray-600">Seller Name:</span> {order.book?.seller?.name}</p>
+                          <p><span className="font-semibold text-gray-600">Location:</span> {order.book?.seller?.city}</p>
+                          <p><span className="font-semibold text-gray-600">Phone:</span> <span className="font-mono text-gray-800">{order.book?.seller?.phone || '98XXXXXXXX'}</span></p>
+                        </div>
+                      </div>
+
+                      {/* Emotional Donation Block */}
+                      <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 bg-amber-200 text-amber-900 text-[9px] px-2 py-0.5 rounded-bl-lg font-bold uppercase tracking-wider">
+                          A Humble Request
+                        </div>
+                        <h4 className="font-bold text-amber-900 mb-2 flex items-center gap-2 text-sm">
+                          <span className="text-lg">🙏</span> Message from the Heart
+                        </h4>
+                        <p className="text-xs text-amber-900/80 mb-3 leading-relaxed">
+                          &quot;We trust you explicitly to help us keep this platform alive for students.
+                          Please donate <strong>10% (Rs. {Math.round(order.totalAmount * 0.10)})</strong> to the Admin.&quot;
+                        </p>
+                        <div className="bg-white/60 rounded-lg p-2 space-y-1 text-xs">
+                          <div className="flex justify-between"><span className="font-semibold">eSewa/Khalti:</span> <span className="font-mono">9800000000</span></div>
+                          <div className="flex justify-between"><span className="font-semibold">Ncell:</span> <span className="font-mono">9800000000</span></div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/dashboard/buyer/messages?initialMessage=Reason for cancellation of Order #${order.id}: `}
+                          className="flex-1 px-4 py-2 border border-amber-200 text-amber-600 rounded-lg text-sm font-medium hover:bg-amber-50 transition text-center"
+                        >
+                          Request Cancellation
+                        </Link>
+                        <button
+                          onClick={() => initiateSuccess(order.id)}
+                          className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition shadow-sm flex items-center justify-center gap-1"
+                        >
+                          <CheckCircle className="w-4 h-4" /> Received Book?
+                        </button>
+                      </div>
                     </div>
                   )}
                   {['cancelled', 'rejected', 'delivered'].includes(order.status) && (

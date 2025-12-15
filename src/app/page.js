@@ -1,300 +1,199 @@
-'use client';
-
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from './api/auth/[...nextauth]/route';
+import { Book } from '@/models/index';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
-import { useState, useEffect } from 'react';
-import { BookOpen, ShoppingBag, Users, Search, ArrowRight, LogIn, UserPlus, LogOut, Star } from 'lucide-react';
+import Testimonials from '@/components/Testimonials';
 
-export default function Home() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [featuredBooks, setFeaturedBooks] = useState([]);
-  const [loadingBooks, setLoadingBooks] = useState(true);
+function TestimonialsWrapper() {
+  return <Testimonials />;
+}
 
-  useEffect(() => {
-    // Fetch a few featured books
-    const fetchFeatured = async () => {
-      try {
-        const res = await fetch('/api/books?limit=4');
-        if (res.ok) {
-          const data = await res.json();
-          setFeaturedBooks(data.slice(0, 4));
-        }
-      } catch (error) {
-        console.error("Failed to fetch featured books", error);
-      } finally {
-        setLoadingBooks(false);
-      }
-    };
-    fetchFeatured();
-  }, []);
+async function getFeaturedBooks() {
+  try {
+    const books = await Book.findAll({
+      limit: 6,
+      order: [['createdAt', 'DESC']],
+      attributes: ['id', 'title', 'price', 'images', 'category'],
+    });
+    return books;
+  } catch (error) {
+    console.error("Error fetching featured books:", error);
+    return [];
+  }
+}
 
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' });
-  };
+export default async function Home() {
+  const session = await getServerSession(authOptions);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/dashboard/buyer?q=${encodeURIComponent(searchQuery)}`);
-    }
-  };
+  if (session) {
+    const role = session.user?.role;
+    if (role === 'admin') redirect('/dashboard/admin');
+    if (role === 'seller') redirect('/dashboard/seller');
+    if (role === 'buyer') redirect('/dashboard/buyer');
+  }
 
-  // Helper to parse images safely
-  const getBookImage = (book) => {
-    let imgs = book.images;
-    if (typeof imgs === 'string') {
-      try {
-        imgs = JSON.parse(imgs);
-      } catch (e) {
-        // If parse fails, checks if it looks like a path
-        if (imgs.startsWith('/') || imgs.startsWith('http')) {
-          return imgs;
-        }
-        imgs = [];
-      }
-    }
-    return Array.isArray(imgs) && imgs.length > 0 ? imgs[0] : '/placeholder-book.png';
-  };
-
-  const calculateDiscountedPrice = (price, discount) => {
-    if (!discount || discount <= 0) return price;
-    return Math.round(price - (price * discount / 100));
-  };
+  const featuredBooks = await getFeaturedBooks();
 
   return (
-    <div className="min-h-screen bg-amber-50 text-gray-800 font-sans">
-      {/* Navbar */}
-      {/* Sticky Professional Header */}
-      <header className="sticky top-0 z-50 bg-amber-50/95 backdrop-blur-md border-b border-amber-100 transition-all duration-300">
-        <nav className="flex justify-between items-center px-6 py-1 max-w-7xl mx-auto">
-          {/* Brand Logo */}
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push('/')}>
-            <img src="/logo.png" alt="Pustaklinu" loading="eager" className="h-24 object-contain hover:scale-105 transition duration-300" />
-          </div>
+    <div className="min-h-screen bg-amber-50">
 
-          {/* Center Navigation - Clean & Professional */}
-          {/* Center Navigation - Conditional based on Role */}
-          <div className="hidden md:flex items-center gap-10">
-            {session?.user?.role === 'seller' ? (
-              <>
-                <Link href="/dashboard/seller" className="text-gray-600 hover:text-amber-700 font-medium text-[15px] transition-colors relative group">
-                  My Listings
-                  <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-amber-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
-                </Link>
-                <Link href="/dashboard/seller/messages" className="text-gray-600 hover:text-amber-700 font-medium text-[15px] transition-colors relative group">
-                  Messages
-                  <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-amber-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link href="/" className="text-gray-600 hover:text-amber-700 font-medium text-[15px] transition-colors relative group">
-                  Home
-                  <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-amber-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
-                </Link>
+      {/* Hero Section - Ultra Professional Redesign */}
+      <div className="relative h-[90vh] flex items-center justify-center overflow-hidden">
+        {/* Background Layer */}
+        <div className="absolute inset-0 z-0">
+          {/* High-res Premium Library Board Background */}
+          <div
+            className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1524578271613-d550eacf6090?ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center filter blur-sm scale-105"
+            aria-hidden="true"
+          />
+          {/* Professional Gradient Overlay: Lighter/Subtle for clarity */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-amber-900/60" />
+        </div>
 
-                <Link href="/dashboard/buyer" className="text-gray-600 hover:text-amber-700 font-medium text-[15px] transition-colors relative group">
-                  Categories
-                  <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-amber-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
-                </Link>
+        {/* Content Layer */}
+        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center animate-fade-in">
+          {/* Brand Label */}
+          <span className="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-amber-300 text-xs font-bold tracking-[0.2em] uppercase mb-8 shadow-sm">
+            Pustaklinu
+          </span>
 
-                <Link href="/dashboard/buyer/orders" className="text-gray-600 hover:text-amber-700 font-medium text-[15px] transition-colors relative group">
-                  Orders
-                  <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-amber-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
-                </Link>
-
-                <Link href="/dashboard/buyer/messages" className="text-gray-600 hover:text-amber-700 font-medium text-[15px] transition-colors relative group">
-                  Chat
-                  <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-amber-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Right Side Actions */}
-          <div className="flex gap-4 items-center">
-            {status === 'loading' ? (
-              <div className="flex gap-4 animate-pulse">
-                <div className="w-20 h-9 bg-gray-100 rounded-full"></div>
-                <div className="w-24 h-9 bg-gray-100 rounded-full"></div>
-              </div>
-            ) : !session ? (
-              <>
-                <Link href="/login" className="flex items-center gap-2 px-5 py-2 text-gray-700 hover:text-amber-700 font-medium transition hover:bg-gray-50 rounded-full">
-                  <LogIn className="w-4 h-4" /> Login
-                </Link>
-                <Link href="/register" className="flex items-center gap-2 px-6 py-2.5 bg-amber-700 text-white font-medium rounded-full hover:bg-amber-800 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                  <UserPlus className="w-4 h-4" /> Register
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link href={`/dashboard/${session.user.role}`} className="flex items-center gap-2 text-gray-600 hover:text-amber-700 font-medium transition mr-2">
-                  Dashboard
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-5 py-2 border border-amber-200 text-amber-700 font-medium rounded-full hover:bg-amber-50 transition"
-                >
-                  <LogOut className="w-4 h-4" /> Logout
-                </button>
-              </>
-            )}
-          </div>
-        </nav>
-      </header>
-
-      {/* Hero Section */}
-      <main className="max-w-7xl mx-auto px-6 py-12 md:py-20 grid md:grid-cols-2 gap-12 items-center">
-        <div className="space-y-6">
-          <h1 className="text-5xl md:text-6xl font-extrabold text-amber-900 leading-tight">
-            Give Old Books <br /> <span className="text-amber-600">A New Story</span>
+          {/* Main Headline */}
+          <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-6 leading-tight drop-shadow-lg">
+            Give Old Books a <br className="hidden md:block" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500">
+              New Life
+            </span>
           </h1>
-          <p className="text-lg text-gray-600 max-w-lg">
-            Connect with book lovers in your neighborhood. Buy, sell, and exchange pre-loved books effortlessly. Join our community today.
+
+          {/* Subheadline */}
+          <p className="text-lg md:text-xl text-gray-200/90 font-medium max-w-2xl mx-auto mb-10 leading-relaxed tracking-wide">
+            The smartest way to buy, sell, and exchange books in your community.
+            <br className="hidden md:block" /> Join thousands of students and readers today.
           </p>
 
-          {/* Search Bar in Hero */}
-          <form onSubmit={handleSearch} className="relative max-w-md w-full">
-            <input
-              type="text"
-              placeholder="Search for books by title or author..."
-              className="w-full pl-12 pr-4 py-3 rounded-full border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none shadow-sm text-gray-900"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-            <button type="submit" className="absolute right-2 top-2 bg-amber-700 text-white p-1.5 rounded-full hover:bg-amber-800 transition">
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
-
-          <div className="flex gap-4 pt-4">
-            <Link href="/dashboard/buyer" className="px-8 py-4 bg-amber-700 text-white text-lg font-semibold rounded-full hover:bg-amber-800 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center gap-2">
-              <BookOpen className="w-5 h-5" /> Browse Books
-            </Link>
+          {/* Call to Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-5 justify-center items-center">
+            <a
+              href="/register"
+              className="px-8 py-4 bg-amber-500 hover:bg-amber-400 text-white rounded-lg font-bold text-base transition-all duration-300 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] transform hover:-translate-y-1"
+            >
+              Get Started
+            </a>
+            <a
+              href="/login"
+              className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-sm text-white rounded-lg font-semibold text-base transition-all duration-300 hover:border-white/30"
+            >
+              Sign In
+            </a>
           </div>
         </div>
-        <div className="relative">
-          <div className="absolute -inset-4 bg-amber-200 rounded-full opacity-30 blur-3xl animate-pulse"></div>
-          <img
-            src="/landing_hero.png" // We will move the generated image here
-            alt="Books Illustration"
-            loading="eager"
-            className="relative z-10 w-full h-auto drop-shadow-2xl rounded-2xl transform rotate-2 hover:rotate-0 transition duration-500"
-          />
-        </div>
-      </main>
+      </div>
 
       {/* Featured Books Section */}
-      <section className="bg-amber-50/50 py-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-amber-900">Recently Listed</h2>
-            <Link href="/dashboard/buyer" className="text-amber-700 font-semibold hover:underline flex items-center gap-1">
-              View All <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+      <div className="max-w-7xl mx-auto px-6 py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Fresh Arrivals</h2>
+          <div className="w-16 h-1 bg-amber-500 mx-auto rounded-full"></div>
+          <p className="text-gray-500 mt-4">Check out the latest books listed by our community</p>
+        </div>
 
-          {loadingBooks ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-white rounded-xl h-80 animate-pulse shadow-sm p-4">
-                  <div className="bg-gray-200 w-full h-48 rounded-lg mb-4"></div>
-                  <div className="bg-gray-200 w-3/4 h-4 rounded mb-2"></div>
-                  <div className="bg-gray-200 w-1/2 h-4 rounded"></div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredBooks.length > 0 ? featuredBooks.map(book => (
-                <Link key={book.id} href={`/dashboard/buyer?q=${encodeURIComponent(book.title)}`} className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full border border-amber-100 hover:-translate-y-1">
-                  <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
+        {featuredBooks.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {featuredBooks.map((book) => {
+              // Parse images safely
+              let imgUrl = '/placeholder-book.png';
+              if (book.images) {
+                try {
+                  const parsed = typeof book.images === 'string' ? JSON.parse(book.images) : book.images;
+                  if (Array.isArray(parsed) && parsed.length > 0) imgUrl = parsed[0];
+                } catch (e) { }
+              }
+
+              return (
+                <Link href="/login" key={book.id} className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 border border-amber-100 overflow-hidden flex flex-col cursor-pointer">
+                  <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
                     <img
-                      src={getBookImage(book)}
-                      alt={book.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover transform group-hover:scale-105 transition duration-500"
+                      src={imgUrl}
+                      alt={book.title || "Book Image"}
+                      className="w-full h-full object-cover transform group-hover:scale-110 transition duration-500"
                     />
-                    <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-                      {Number(book.discount) > 0 && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                          {book.discount}% OFF
-                        </span>
-                      )}
-                      <div className="bg-white/90 backdrop-blur px-2 py-0.5 rounded-md text-xs font-bold text-amber-700 shadow-sm flex flex-col items-end leading-tight">
-                        {Number(book.discount) > 0 ? (
-                          <>
-                            <span className="text-red-500 line-through text-[10px]">Rs. {book.price}</span>
-                            <span>Rs. {calculateDiscountedPrice(book.price, book.discount)}</span>
-                          </>
-                        ) : (
-                          <span>Rs. {book.price}</span>
-                        )}
-                      </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 translate-y-full group-hover:translate-y-0 transition duration-300">
+                      <p className="text-white text-sm font-medium">Login to view details</p>
                     </div>
                   </div>
                   <div className="p-4 flex-1">
-                    <h3 className="font-bold text-gray-800 line-clamp-1 group-hover:text-amber-700 transition">{book.title}</h3>
-                    <p className="text-sm text-gray-500 mb-2">{book.author}</p>
-                    <div className="flex justify-between items-center mt-auto pt-2">
-                      <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-md">{book.category || 'General'}</span>
-                    </div>
+                    <h3 className="font-bold text-gray-800 line-clamp-1 mb-1 group-hover:text-amber-600 transition">{book.title}</h3>
+                    <p className="text-xs text-gray-500 mb-2">{book.category}</p>
+                    <p className="text-amber-600 font-bold">Rs. {book.price}</p>
                   </div>
                 </Link>
-              )) : (
-                <div className="col-span-4 text-center py-10 text-gray-500">
-                  <p>No featured books available at the moment.</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-300">
+            <p className="text-gray-500">More books coming soon!</p>
+          </div>
+        )}
 
-      {/* Features Section */}
-      <section id="features" className="bg-white py-20">
+        <div className="text-center mt-12">
+          <Link href="/register" className="inline-flex items-center gap-2 text-amber-600 font-bold hover:text-amber-700 hover:underline text-lg">
+            View All Books <span className="text-xl">→</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Features Grid */}
+      <div className="bg-white py-20 border-t border-b border-amber-100">
         <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-3xl font-bold text-center text-amber-900 mb-16">How It Works</h2>
-          <div className="grid md:grid-cols-3 gap-12">
-            <div className="text-center space-y-4 p-6 rounded-2xl hover:bg-amber-50 transition duration-300">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-700">
-                <ShoppingBag className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-800">Sell Your Books</h3>
-              <p className="text-gray-600">List your old books with ease. Add photos, set a price, and find a buyer nearby.</p>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">Why Choose Pustaklinu?</h2>
+            <div className="w-16 h-1 bg-amber-500 mx-auto rounded-full"></div>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="p-8 bg-amber-50 rounded-2xl hover:bg-amber-100 transition duration-300">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-sm">📚</div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Huge Collection</h3>
+              <p className="text-gray-600">Find academic books, novels, and rare gems at a fraction of the cost.</p>
             </div>
-            <div className="text-center space-y-4 p-6 rounded-2xl hover:bg-amber-50 transition duration-300">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-700">
-                <Search className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-800">Find Nearby Gems</h3>
-              <p className="text-gray-600">Use geolocation to discover books available in your neighborhood. No shipping hassles.</p>
+            <div className="p-8 bg-amber-50 rounded-2xl hover:bg-amber-100 transition duration-300">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-sm">🌍</div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Eco-Friendly</h3>
+              <p className="text-gray-600">Reduce paper waste by passing on books to those who need them next.</p>
             </div>
-            <div className="text-center space-y-4 p-6 rounded-2xl hover:bg-amber-50 transition duration-300">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-700">
-                <Users className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-800">Connect & Exchange</h3>
-              <p className="text-gray-600">Chat with sellers/buyers (via Admin) and arrange a meetup to exchange the books.</p>
+            <div className="p-8 bg-amber-50 rounded-2xl hover:bg-amber-100 transition duration-300">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-sm">⚡</div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Quick & Easy</h3>
+              <p className="text-gray-600">List a book in seconds. Connect with buyers vertically instantly.</p>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+
+      {/* Testimonials Section */}
+      <div className="bg-amber-50 py-20">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-800">What Our Community Says</h2>
+            <p className="text-gray-500 mt-2">Real feedback from book lovers like you</p>
+          </div>
+          {/* We import client component here */}
+          <TestimonialsWrapper />
+        </div>
+      </div>
 
       {/* Footer */}
-      <footer className="bg-amber-900 text-amber-100 py-12">
+      <footer className="bg-gray-900 text-gray-400 py-12 text-center">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-amber-100">Pustaklinu</span>
-            </div>
-            <p className="text-sm opacity-75">&copy; 2025 Pustaklinu. All rights reserved.</p>
+          <h2 className="text-2xl font-bold text-white mb-6">Pustaklinu</h2>
+          <div className="flex justify-center gap-6 mb-8">
+            <a href="#" className="hover:text-white transition">About Us</a>
+            <a href="#" className="hover:text-white transition">Contact</a>
+            <a href="/login" className="hover:text-white transition">Seller Login</a>
+            <a href="#" className="hover:text-white transition">Terms</a>
           </div>
+          <p>&copy; {new Date().getFullYear()} Pustaklinu. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -17,47 +17,44 @@ export async function GET(req) {
 
     let whereClause = {};
     if (query) {
-      whereClause = {
-        [Op.or]: [
-          { title: { [Op.like]: `%${query}%` } },
-          { description: { [Op.like]: `%${query}%` } },
-          { keywords: { [Op.like]: `%${query}%` } },
-        ],
-      };
+      // Improved Tag & Search Algorithm
+      const lowerQuery = query.toLowerCase().trim();
+      const tokens = lowerQuery.split(/\s+/).filter(Boolean);
+
+      if (tokens.length > 0) {
+        // We want to prioritize books that match the query in the 'keywords' (tags) field.
+        // Or if the title matches well.
+
+        // This 'OR' condition finds books where ANY token matches ANY of the fields.
+        const searchConditions = tokens.map(token => ({
+          [Op.or]: [
+            { title: { [Op.like]: `%${token}%` } },
+            { description: { [Op.like]: `%${token}%` } },
+            { keywords: { [Op.like]: `%${token}%` } }, // Searching within tags
+            { category: { [Op.like]: `%${token}%` } }
+          ]
+        }));
+
+        // Combining with AND ensures that if user types "Biology 11", books having both implied concepts are found.
+        // However, for tags like "Class 11", "Biology", sometimes we want matches for either.
+        // Let's stick to the AND for tokens to narrow down results (Precision), 
+        // but rely on partial field matches (Op.like) for Recall.
+        whereClause = {
+          [Op.and]: searchConditions
+        };
+      }
     }
     if (category) {
       whereClause.category = category;
     }
 
+    // Show available, on-hold (booked), and sold books so users can see status
+    whereClause.status = { [Op.in]: ['available', 'on-hold', 'sold'] };
+
     // Geolocation Search
     let include = [{ model: User, as: 'seller', attributes: ['name', 'latitude', 'longitude', 'city', 'state'] }];
+    // Basic ordering by newest first
     let order = [['createdAt', 'DESC']];
-
-    if (lat && lng) {
-      // Haversine formula for distance in km
-      const haversine = `(
-        6371 * acos(
-          cos(radians(${lat}))
-          * cos(radians(latitude))
-          * cos(radians(longitude) - radians(${lng}))
-          + sin(radians(${lat})) * sin(radians(latitude))
-        )
-      )`;
-
-      // We need to order by distance.
-      // Since 'distance' is calculated on the associated User model, it's tricky in Sequelize with standard include.
-      // We might need a raw query or a subquery, but for simplicity, let's fetch all (or filtered) and sort in JS if dataset is small,
-      // OR use a literal in the order clause if possible.
-      // However, sorting by associated column calculated value is complex.
-      // Let's try to add the distance attribute to the query.
-
-      // Simpler approach: Filter by city/state if provided in query, otherwise show all.
-      // But user asked for "near him".
-      // Let's just return all books with seller info and let frontend sort/filter, OR do a raw query.
-      // Given the constraints, I'll stick to basic filtering for now and maybe add distance sorting if time permits or use a raw query.
-
-      // Let's try to use Sequelize literal for distance in attributes.
-    }
 
     const books = await Book.findAll({
       where: whereClause,
@@ -65,8 +62,39 @@ export async function GET(req) {
       order: order,
     });
 
-    // Post-processing for distance if lat/lng provided
     let results = books.map(book => book.toJSON());
+
+    // Post-processing for better "Tag Algorithm" ranking if a query exists
+    // If we have a query, we might want to boost exact tag matches to the top.
+    if (query) {
+      const lowerQuery = query.toLowerCase().trim();
+      results.sort((a, b) => {
+        const aKeywords = (a.keywords || '').toLowerCase();
+        const bKeywords = (b.keywords || '').toLowerCase();
+
+        // Check for exact tag match presence
+        // Assuming tags are comma separated
+        const aTags = aKeywords.split(',').map(s => s.trim());
+        const bTags = bKeywords.split(',').map(s => s.trim());
+
+        // Boost if query matches one of the tags exactly
+        const aHasTag = aTags.includes(lowerQuery);
+        const bHasTag = bTags.includes(lowerQuery);
+
+        if (aHasTag && !bHasTag) return -1;
+        if (!aHasTag && bHasTag) return 1;
+
+        // Secondary sort: Match in title?
+        const aTitle = a.title.toLowerCase();
+        const bTitle = b.title.toLowerCase();
+        if (aTitle.includes(lowerQuery) && !bTitle.includes(lowerQuery)) return -1;
+        if (!aTitle.includes(lowerQuery) && bTitle.includes(lowerQuery)) return 1;
+
+        return 0;
+      });
+    }
+
+    // Distance Calculation & Sorting
     if (lat && lng) {
       results = results.map(book => {
         const seller = book.seller;
@@ -76,6 +104,15 @@ export async function GET(req) {
         }
         return { ...book, distance: null };
       }).sort((a, b) => {
+        // If query sorting already happened, we might want to keep that primary or secondary?
+        // Usually, relevance (query) is more important than distance if the user is searching for something specific.
+        // But if just browsing nearby, distance is key.
+        // If `query` is present, let's prioritize relevance (preserved by stable sort or previous step), 
+        // then distance.
+        // If sorting strictly by distance is desired, uncomment standard sort.
+        // For "algorithm like YouTube", relevance is key.
+
+        // If distance is null (unknown location), push to bottom
         if (a.distance === null) return 1;
         if (b.distance === null) return -1;
         return a.distance - b.distance;
@@ -102,17 +139,27 @@ export async function POST(req) {
 
     const formData = await req.formData();
     const title = formData.get('title');
-    const pages = formData.get('pages');
-    const price = formData.get('price');
+
+    // Explicit Type Conversion & Validation
+    const pages = parseInt(formData.get('pages') || '0', 10);
+    const price = parseFloat(formData.get('price') || '0');
     const description = formData.get('description');
     const category = formData.get('category');
     const keywords = formData.get('keywords');
-    const discount = formData.get('discount') || 0;
-    console.log('DEBUG BOOK CREATE - Discount received:', discount);
+    const discount = parseInt(formData.get('discount') || '0', 10);
+
     const images = formData.getAll('images'); // Array of files
 
-    if (!title || !pages || !price || !description || !category) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!title || isNaN(pages) || isNaN(price) || !description || !category) {
+      console.error('Validation failed:', { title, pages, price, category });
+      return NextResponse.json({ error: 'Missing required fields or invalid number format' }, { status: 400 });
+    }
+
+    // Validate images exist (at least one) if creating new
+    // Note: Edit might differ, but this is POST (Create).
+    if (images.length === 0 && (!formData.get('imageOrder') || formData.get('imageOrder') === '[]')) {
+      // Optional: enforce at least one image?
+      // return NextResponse.json({ error: 'At least one image is required' }, { status: 400 });
     }
 
     const imageOrderRaw = formData.get('imageOrder');
@@ -121,6 +168,7 @@ export async function POST(req) {
       try {
         imageOrder = JSON.parse(imageOrderRaw);
       } catch (e) {
+        console.warn('Failed to parse imageOrder:', e);
         imageOrder = [];
       }
     }
@@ -128,16 +176,23 @@ export async function POST(req) {
     const newImagePaths = [];
     for (const image of images) {
       if (image && typeof image.arrayBuffer === 'function' && image.name) {
-        const buffer = Buffer.from(await image.arrayBuffer());
-        const filename = Date.now() + '-' + image.name.replace(/\s/g, '-');
-        const uploadPath = path.join(process.cwd(), 'public/uploads', filename);
-        await mkdir(path.dirname(uploadPath), { recursive: true });
-        await writeFile(uploadPath, buffer);
-        newImagePaths.push(`/uploads/${filename}`);
+        try {
+          const buffer = Buffer.from(await image.arrayBuffer());
+          // Sanitize filename
+          const safeName = image.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const filename = Date.now() + '-' + safeName;
+          const uploadPath = path.join(process.cwd(), 'public/uploads', filename);
+          await mkdir(path.dirname(uploadPath), { recursive: true });
+          await writeFile(uploadPath, buffer);
+          newImagePaths.push(`/uploads/${filename}`);
+        } catch (uploadErr) {
+          console.error('Image upload failed:', uploadErr);
+          // Continue or fail? Let's continue but log.
+        }
       }
     }
 
-    // Construct final images list based on order
+    // Construct final images list
     let finalImages = [];
     if (imageOrder.length > 0) {
       let newImgIdx = 0;
@@ -145,10 +200,7 @@ export async function POST(req) {
         if (item === 'new-image-placeholder') {
           return newImagePaths[newImgIdx++] || null;
         }
-        return item; // Should be null for POST usually, unless we support copying? For POST it's mostly new.
-        // Actually for POST, if we only have new images, imageOrder might be ['new-image-placeholder', 'new-image-placeholder']
-        // But wait, the frontend might send 'new-123' IDs.
-        // Let's stick to the plan: Frontend sends 'new-image-placeholder' for new files in order.
+        return item;
       }).filter(Boolean);
     } else {
       finalImages = newImagePaths;
@@ -160,12 +212,10 @@ export async function POST(req) {
       price,
       description,
       category,
-      keywords,
+      keywords, // Tags
       discount,
-      images: finalImages,
-      sellerId: session.user.id, // Admin can add books? User said "Admin can also updaet,delete and update all books of seller". Usually Admin manages. If Admin adds, who is seller? 
-      // Assuming Admin adds for themselves or we need a sellerId param.
-      // For now, assume logged in user is the seller.
+      images: finalImages, // Sequelize handling JSON/array
+      sellerId: session.user.id,
     });
 
     return NextResponse.json(newBook, { status: 201 });
@@ -177,7 +227,7 @@ export async function POST(req) {
 
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
   var R = 6371.0710; // Radius of the earth in km
-  var dLat = deg2rad(lat2 - lat1);  // deg2rad below
+  var dLat = deg2rad(lat2 - lat1);
   var dLon = deg2rad(lon2 - lon1);
   var a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -185,7 +235,7 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     Math.sin(dLon / 2) * Math.sin(dLon / 2)
     ;
   var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  var d = R * c; // Distance in km
+  var d = R * c;
   return d;
 }
 

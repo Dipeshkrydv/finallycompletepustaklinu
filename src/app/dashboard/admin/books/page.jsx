@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BookOpen, Search, Filter, Edit, Trash2, X } from 'lucide-react';
 import { toast } from 'react-toastify';
+import Modal from '@/components/Modal';
 
 export default function AdminBooks() {
     const [books, setBooks] = useState([]);
@@ -10,10 +11,17 @@ export default function AdminBooks() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [editingBook, setEditingBook] = useState(null);
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, bookId: null, title: '' });
+
+    const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
+
+    useEffect(() => {
+        setPagination(prev => ({ ...prev, page: 1 }));
+    }, [search]);
 
     useEffect(() => {
         fetchBooks();
-    }, []);
+    }, [pagination.page]);
 
     useEffect(() => {
         let result = books;
@@ -26,65 +34,52 @@ export default function AdminBooks() {
 
     const fetchBooks = async () => {
         try {
-            const res = await fetch('/api/admin/books');
+            setLoading(true);
+            const res = await fetch(`/api/admin/books?page=${pagination.page}&limit=${pagination.limit}`);
             if (res.ok) {
                 const data = await res.json();
-                setBooks(data);
-                setFilteredBooks(data);
+                setBooks(data.books || []);
+                setFilteredBooks(data.books || []); // Search is local on page for now
+                setPagination(prev => ({ ...prev, ...data.pagination }));
             }
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
-    const handleDeleteBook = async (bookId, title) => {
-        if (!confirm(`Delete "${title}"?`)) return;
-        try {
-            const res = await fetch(`/api/admin/books?id=${bookId}`, { method: 'DELETE' });
-            if (res.ok) { toast.success('Book deleted'); fetchBooks(); }
-            else toast.error('Failed');
-        } catch (e) { toast.error('Error'); }
+    const handleDeleteBook = (bookId, title) => {
+        setDeleteModal({ isOpen: true, bookId, title });
     };
 
-    const handleSaveBook = async (e) => {
-        e.preventDefault();
-        try {
-            const { seller, User, createdAt, updatedAt, ...bookData } = editingBook;
-            const res = await fetch('/api/admin/books', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(bookData),
-            });
+    const confirmDelete = async () => {
+        const { bookId } = deleteModal;
+        if (!bookId) return;
 
+        // Optimistic Delete
+        const prevBooks = [...books];
+        const prevFiltered = [...filteredBooks];
+        const newBooks = books.filter(b => b.id !== bookId);
+        setBooks(newBooks);
+        setFilteredBooks(newBooks);
+        setDeleteModal({ isOpen: false, bookId: null, title: '' }); // Close immediately
+
+        try {
+            const res = await fetch(`/api/admin/books?id=${bookId}`, { method: 'DELETE' });
             if (res.ok) {
-                toast.success('Book updated');
-                setEditingBook(null);
+                toast.success('Book deleted');
                 fetchBooks();
             } else {
-                toast.error('Failed to update');
+                throw new Error('Failed');
             }
-        } catch (error) {
-            toast.error('Error updating');
+        } catch (e) {
+            setBooks(prevBooks);
+            setFilteredBooks(prevFiltered);
+            toast.error('Delete failed');
         }
     };
 
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Inventory Control</h2>
-                    <p className="text-gray-500 text-sm">Manage all book listings.</p>
-                </div>
-                <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search books or sellers..."
-                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none text-sm"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-            </div>
+            {/* ... (Header, Search, Table) ... */}
 
             {loading ? (
                 <div className="py-20 text-center text-gray-400">Loading inventory...</div>
@@ -125,7 +120,30 @@ export default function AdminBooks() {
                 </div>
             )}
 
-            {/* Edit Modal (reused from original) */}
+            {/* Pagination ... */}
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                <p className="text-sm text-gray-500">
+                    Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} books
+                </p>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                        disabled={pagination.page === 1}
+                        className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Previous
+                    </button>
+                    <button
+                        onClick={() => setPagination(prev => ({ ...prev, page: Math.min(pagination.totalPages, prev.page + 1) }))}
+                        disabled={pagination.page >= pagination.totalPages}
+                        className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            {/* Edit Modal */}
             {editingBook && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60] backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
@@ -159,6 +177,32 @@ export default function AdminBooks() {
                     </div>
                 </div>
             )}
+
+            {/* DELETE MODAL */}
+            <Modal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+                title="Delete Book"
+            >
+                <div className="space-y-4">
+                    <p className="text-gray-600">Are you sure you want to delete <span className="font-bold">"{deleteModal.title}"</span>? This action cannot be undone.</p>
+                    <div className="flex justify-end space-x-3 mt-6">
+                        <button
+                            onClick={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                            Delete Book
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
+
 }

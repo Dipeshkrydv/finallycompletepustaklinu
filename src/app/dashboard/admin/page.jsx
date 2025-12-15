@@ -32,7 +32,12 @@ export default function AdminDashboard() {
           const books = await booksRes.json();
 
           // Calculate Stats
-          const totalSale = orders.reduce((acc, o) => acc + (o.totalAmount || 0), 0);
+          // FIX: Total Sale should only include COMPLETED or ACCEPTED orders (Revenue), not cancelled or pending.
+          const totalSale = orders
+            .filter(o => o.status === 'delivered' || o.status === 'accepted')
+            .reduce((acc, o) => acc + (o.totalAmount || 0), 0);
+
+          // Active Orders: Needs Action (Pending)
           const activeOrders = orders.filter(o => o.status === 'pending').length;
 
           setStats({
