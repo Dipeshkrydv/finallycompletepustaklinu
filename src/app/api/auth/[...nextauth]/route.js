@@ -10,7 +10,7 @@ import FacebookProviderModule from 'next-auth/providers/facebook';
 const GoogleProvider = GoogleProviderModule.default || GoogleProviderModule;
 const FacebookProvider = FacebookProviderModule.default || FacebookProviderModule;
 import { Op } from 'sequelize';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { User } from '@/models/index';
 
 export const authOptions = {

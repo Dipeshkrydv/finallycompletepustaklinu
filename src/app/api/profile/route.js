@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { User } from '@/models/index';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export async function GET(req) {
     try {

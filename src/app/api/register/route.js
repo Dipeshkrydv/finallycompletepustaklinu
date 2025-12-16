@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { User, Otp } from '@/models/index';
 import { Op } from 'sequelize';
 
