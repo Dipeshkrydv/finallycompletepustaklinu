@@ -7,9 +7,14 @@ const rateLimit = new Map();
 // Note: In strict Edge environments, this Map might not persist across all requests, 
 // but it works for single-instance deployments and provides a layer of protection.
 function checkRateLimit(ip) {
+    // Bypass rate limiting in development
+    if (process.env.NODE_ENV === 'development') {
+        return true;
+    }
+
     const now = Date.now();
     const windowMs = 60 * 1000; // 1 minute
-    const limit = 20; // 20 requests per minute per IP for sensitive routes
+    const limit = 100; // Increased to 100 requests per minute
 
     const record = rateLimit.get(ip);
     if (!record) {

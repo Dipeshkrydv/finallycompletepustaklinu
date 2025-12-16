@@ -45,3 +45,10 @@ f.zip
 *.zip
 database.sqlite
 public/uploads
+
+# deployment artifacts
+DEPLOY_INSTRUCTIONS.md
+HOSTINGER_ENV_EXAMPLE.txt
+build_error.txt
+prepare_upload.sh
+release/
