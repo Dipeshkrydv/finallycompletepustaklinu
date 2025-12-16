@@ -36,7 +36,10 @@ function checkRateLimit(ip) {
 }
 
 export async function middleware(req) {
-    const ip = req.ip || '127.0.0.1';
+    // Better IP detection for proxies (Vercel, Hostinger, Cloudflare)
+    const forwardedFor = req.headers.get("x-forwarded-for");
+    const ip = forwardedFor ? forwardedFor.split(",")[0] : (req.ip || "127.0.0.1");
+
     const path = req.nextUrl.pathname;
 
     // Rate Limit Sensitive Routes

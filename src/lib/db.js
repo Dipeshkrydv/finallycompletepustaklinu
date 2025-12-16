@@ -1,10 +1,18 @@
 import { Sequelize } from 'sequelize';
+import mysql2 from 'mysql2';
 
 let sequelize;
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Check for MySQL Environment Variables (Only use in Production or if explicitly requested)
+// In production, we MUST use MySQL. Error out if config is missing.
+if (isProduction) {
+  if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_NAME) {
+    throw new Error('CRITICAL: Missing MySQL database configuration variables in production environment.');
+  }
+}
+
+// Check for MySQL Environment Variables
 const useMySQL = (isProduction || process.env.DB_DIALECT === 'mysql') &&
   process.env.DB_HOST && process.env.DB_USER && process.env.DB_NAME;
 
@@ -16,9 +24,9 @@ const config = useMySQL ? {
   database: process.env.DB_NAME,
   port: process.env.DB_PORT || 3306,
   logging: false,
-  dialectModule: require('mysql2'), // Ensure mysql2 is used
+  dialectModule: mysql2, // Use imported mysql2 to avoid require/import issues
   pool: {
-    max: 5,
+    max: 10, // Increased for production
     min: 0,
     acquire: 30000,
     idle: 10000
@@ -30,8 +38,14 @@ const config = useMySQL ? {
 };
 
 if (isProduction) {
-  sequelize = new Sequelize(config);
+  // In production, use a global variable to prevent hot-reload connection leaks if serverless function stays warm
+  // though typically standard singleton logic applies.
+  if (!global.sequelize) {
+    global.sequelize = new Sequelize(config);
+  }
+  sequelize = global.sequelize;
 } else {
+  // Development: Use global to prevent connection accumulation during HMR
   if (!global.sequelize) {
     global.sequelize = new Sequelize(config);
   }
