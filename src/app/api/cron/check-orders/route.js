@@ -34,7 +34,7 @@ export async function GET(req) {
 
         const orders = await Order.findAll({
             where: {
-                status: 'confirmed',
+                status: 'accepted',
                 isCompleted: false,
                 followUpStartTime: {
                     [Op.lte]: now // Start time has passed

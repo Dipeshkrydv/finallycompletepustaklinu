@@ -28,7 +28,7 @@ export async function PUT(req, { params }) {
         const updateData = { status };
 
         // Automated Message on Confirmation
-        if (status === 'confirmed' && order.buyerId) {
+        if (status === 'accepted' && order.buyerId) {
             const seller = order.book?.seller;
 
             // Set follow-up to start in 2 minutes (for testing/demo purposes) 

@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 
-const emailUser = process.env.GMAIL_USER || 'toshbritech624@gmail.com'; // Default per user request
+const emailUser = process.env.GMAIL_USER;
 const emailPass = process.env.GMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
 
 const transporter = nodemailer.createTransport({
@@ -12,9 +12,8 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendEmail = async (to, subject, text, html) => {
-    if (!emailPass) {
-        console.error('[EMAIL ERROR] No GMAIL_PASS or GMAIL_APP_PASSWORD found in .env. Email will NOT send.');
-        // Don't crash, just log and return false so Automation Controller logs it as FAILED
+    if (!emailUser || !emailPass) {
+        console.error('[EMAIL ERROR] Missing GMAIL_USER or GMAIL_PASS/GMAIL_APP_PASSWORD in .env. Email will NOT send.');
         return false;
     }
 
