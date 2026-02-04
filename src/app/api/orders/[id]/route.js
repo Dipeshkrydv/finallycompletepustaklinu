@@ -71,10 +71,12 @@ export async function PUT(req, { params }) {
         await order.save();
         return NextResponse.json({ message: 'Order accepted', order });
       }
-      else if (status === 'rejected' && order.status === 'pending') {
-        order.status = 'rejected';
+      else if (status === 'cancelled' && order.status === 'pending') {
+        order.status = 'cancelled';
         await order.save();
-        return NextResponse.json({ message: 'Order rejected', order });
+        // Revert book status to available
+        await Book.update({ status: 'available' }, { where: { id: order.bookId } });
+        return NextResponse.json({ message: 'Order rejected/cancelled', order });
       }
       else {
         return NextResponse.json({ error: 'Invalid state transition for seller' }, { status: 400 });
