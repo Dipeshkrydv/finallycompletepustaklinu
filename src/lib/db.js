@@ -5,13 +5,6 @@ let sequelize;
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-// In production, we MUST use MySQL. Error out if config is missing.
-if (isProduction) {
-  if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_NAME) {
-    throw new Error('CRITICAL: Missing MySQL database configuration variables in production environment.');
-  }
-}
-
 // Check for MySQL Environment Variables
 const useMySQL = (isProduction || process.env.DB_DIALECT === 'mysql') &&
   process.env.DB_HOST && process.env.DB_USER && process.env.DB_NAME;
@@ -24,9 +17,9 @@ const config = useMySQL ? {
   database: process.env.DB_NAME,
   port: process.env.DB_PORT || 3306,
   logging: false,
-  dialectModule: mysql2, // Use imported mysql2 to avoid require/import issues
+  dialectModule: mysql2,
   pool: {
-    max: 10, // Increased for production
+    max: 10,
     min: 0,
     acquire: 30000,
     idle: 10000
@@ -37,19 +30,26 @@ const config = useMySQL ? {
   logging: false,
 };
 
-if (isProduction) {
-  // In production, use a global variable to prevent hot-reload connection leaks if serverless function stays warm
-  // though typically standard singleton logic applies.
-  if (!global.sequelize) {
-    global.sequelize = new Sequelize(config);
+// Singleton pattern for Sequelize instance
+if (!global.sequelize) {
+  // In production, we should ideally have the config, but we don't throw at module level
+  // to avoid breaking the Next.js build process.
+  if (isProduction && !useMySQL) {
+    console.warn('WARNING: Running in production without full MySQL configuration. Falling back to SQLite.');
   }
-  sequelize = global.sequelize;
-} else {
-  // Development: Use global to prevent connection accumulation during HMR
-  if (!global.sequelize) {
-    global.sequelize = new Sequelize(config);
+  global.sequelize = new Sequelize(config);
+}
+
+sequelize = global.sequelize;
+
+/**
+ * Helper to ensure database is properly configured in production.
+ * This should be called inside request handlers or server-side functions.
+ */
+export function ensureDbConfig() {
+  if (isProduction && !useMySQL) {
+    throw new Error('CRITICAL: Missing MySQL database configuration variables in production environment. Please set DB_HOST, DB_USER, and DB_NAME.');
   }
-  sequelize = global.sequelize;
 }
 
 export default sequelize;

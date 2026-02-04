@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { AutomationLog } from '@/models/index';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { sendEmail } from '@/lib/email';
+import { ensureDbConfig } from '@/lib/db';
 
 // Helper
 async function isAdmin() {
@@ -14,6 +15,7 @@ export async function GET(req) {
     if (!await isAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
+        ensureDbConfig();
         const logs = await AutomationLog.findAll({
             order: [['createdAt', 'DESC']],
             limit: 50 // Limit to last 50 for now
@@ -28,6 +30,7 @@ export async function POST(req) {
     if (!await isAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
+        ensureDbConfig();
         const { id } = await req.json();
         const log = await AutomationLog.findByPk(id);
 
