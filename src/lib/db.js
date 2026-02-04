@@ -4,10 +4,11 @@ import mysql2 from 'mysql2';
 let sequelize;
 
 const isProduction = process.env.NODE_ENV === 'production';
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
 
-// In production, we MUST use MySQL. Error out if config is missing.
-if (isProduction) {
-  if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_NAME) {
+// In production runtime, we MUST use MySQL. Avoid throwing during Next build.
+if (isProduction && !isBuildPhase) {
+  if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
     throw new Error('CRITICAL: Missing MySQL database configuration variables in production environment.');
   }
 }

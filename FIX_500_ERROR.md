@@ -55,6 +55,7 @@ Since you pushed from GitHub, the server has the source code but not the "built"
 1.  In the same **Node.js** settings page.
 2.  Make sure **Application Startup File** says exactly: `server.js`
     *   *If it says `bin/www` or `app.js`, change it to `server.js` and Save.*
+3.  If the panel has **Application Start Command**, set it to: `npm start`
 
 ## Step 3: Verify Environment Variables
 

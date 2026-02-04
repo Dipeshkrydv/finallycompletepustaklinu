@@ -49,6 +49,7 @@ You can upload files using **File Manager** (easier for small updates) or **FTP*
     -   **Application Mode**: **Production**.
     -   **Application Root**: `public_html/` (or wherever you extracted files).
     -   **Application Startup File**: `server.js`
+    -   **Application Start Command** (if available): `npm start`
 3.  Click **Create**.
 4.  Click **NPM Install** button. This will install dependencies from `package.json`.
 
@@ -74,6 +75,8 @@ You can upload files using **File Manager** (easier for small updates) or **FTP*
 
 1.  After installing dependencies and setting variables, click **Restart** or **Enable** (switch to 'Enabled' status if 'Disabled').
 2.  Wait a moment, then visit your website.
+
+> Note: `npm start` now runs `server.js`, which binds to `0.0.0.0` in production to ensure Hostinger can reach the app.
 
 ## Troubleshooting
 
