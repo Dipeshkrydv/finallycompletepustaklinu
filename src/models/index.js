@@ -3,14 +3,14 @@ import Book from './Book.js';
 import Order from './Order.js';
 import Cart from './Cart.js';
 import Message from './Message.js';
-
 import Feedback from './Feedback.js';
 import Otp from './Otp.js';
 import AutomationLog from './AutomationLog.js';
 
-// ... (existing associations) ...
-
+// Export all models
 export { User, Book, Order, Cart, Message, Feedback, Otp, AutomationLog };
+
+// Define associations
 User.hasMany(Book, { foreignKey: 'sellerId', as: 'books' });
 Book.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 
@@ -35,4 +35,14 @@ Cart.belongsTo(Book, { foreignKey: 'bookId' });
 User.hasMany(Feedback, { foreignKey: 'userId', as: 'feedbacks' });
 Feedback.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-
+// Default export for safe imports
+export default {
+  User,
+  Book,
+  Order,
+  Cart,
+  Message,
+  Feedback,
+  Otp,
+  AutomationLog,
+};
