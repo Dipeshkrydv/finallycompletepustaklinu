@@ -112,6 +112,8 @@ export async function GET(req) {
         // If sorting strictly by distance is desired, uncomment standard sort.
         // For "algorithm like YouTube", relevance is key.
 
+        if (query) return 0; // Prevent distance sort overriding the relevance sort completely
+
         // If distance is null (unknown location), push to bottom
         if (a.distance === null) return 1;
         if (b.distance === null) return -1;
