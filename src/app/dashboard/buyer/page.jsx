@@ -52,7 +52,7 @@ export default function BuyerDashboard() {
 
   useEffect(() => {
     fetchBooks();
-  }, [location, urlQuery, urlCategory, selectedCity]); // React to URL changes
+  }, [location?.lat, location?.lng, urlQuery, urlCategory, selectedCity]); // React to URL changes
 
   // Save cart to local storage whenever it changes
   useEffect(() => {
@@ -399,9 +399,7 @@ export default function BuyerDashboard() {
             <p className="text-gray-500">We couldn&apos;t find any books matching your criteria.</p>
             <button
               onClick={() => {
-                window.history.replaceState(null, '', '/dashboard/buyer');
-                window.location.reload();
-                /* Simple reload to clear params as next/nav router can be tricky inside onClick here without router hook */
+                router.push('/dashboard/buyer');
               }}
               className="mt-4 text-amber-600 hover:text-amber-700 font-medium"
             >
