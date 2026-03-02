@@ -105,7 +105,8 @@ export const authOptions = {
           token.address = dbUser.address;
           token.city = dbUser.city;
           token.province = dbUser.province;
-          token.requiresProfileCompletion = !dbUser.role || !dbUser.phone || !dbUser.address;
+          // Admins are exempt from profile completion requirements
+          token.requiresProfileCompletion = dbUser.role !== 'admin' && (!dbUser.role || !dbUser.phone || !dbUser.address);
         }
       }
 

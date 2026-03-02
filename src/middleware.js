@@ -66,15 +66,15 @@ export async function middleware(req) {
     }
 
     // 2. Admin Containment: Admins cannot access public pages
-    // If logged in as admin, force them to dashboard unless they are on dashboard or api
+    // If logged in as admin, force them to dashboard unless they are on dashboard, api, or complete-profile
     if (token && token.role === 'admin') {
-        if (!path.startsWith("/dashboard/admin") && !path.startsWith("/api/")) {
+        if (!path.startsWith("/dashboard/admin") && !path.startsWith("/api/") && path !== "/complete-profile") {
             return NextResponse.redirect(new URL("/dashboard/admin", req.url));
         }
     }
 
-    // 3. Profile Completion Check
-    if (token && token.requiresProfileCompletion) {
+    // 3. Profile Completion Check (Skip for admins - they should have complete profiles)
+    if (token && token.requiresProfileCompletion && token.role !== 'admin') {
         if (path !== "/complete-profile" && !path.startsWith("/api/")) {
             return NextResponse.redirect(new URL("/complete-profile", req.url));
         }
