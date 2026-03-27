@@ -4,11 +4,6 @@ const NextAuth = NextAuthModule.default || NextAuthModule;
 import CredentialsProviderModule from 'next-auth/providers/credentials';
 
 const CredentialsProvider = CredentialsProviderModule.default || CredentialsProviderModule;
-import GoogleProviderModule from 'next-auth/providers/google';
-import FacebookProviderModule from 'next-auth/providers/facebook';
-
-const GoogleProvider = GoogleProviderModule.default || GoogleProviderModule;
-const FacebookProvider = FacebookProviderModule.default || FacebookProviderModule;
 import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import { User } from '@/models/index';
@@ -53,47 +48,9 @@ export const authOptions = {
           role: user.role,
         };
       }
-    }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || 'mock_id',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'mock_secret',
-    }),
-    FacebookProvider({
-      clientId: process.env.FACEBOOK_CLIENT_ID || 'mock_id',
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET || 'mock_secret',
-      authorization: {
-        params: {
-          scope: 'public_profile',
-        },
-      },
-      userinfo: {
-        url: "https://graph.facebook.com/me",
-        params: { fields: "id,name,picture" },
-      },
-    }),
+    })
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
-      if (account.provider === 'google' || account.provider === 'facebook') {
-        try {
-          const existingUser = await User.findOne({ where: { email: user.email } });
-          if (!existingUser) {
-            // Create new user with minimal info
-            await User.create({
-              name: user.name,
-              email: user.email,
-              role: '', // Empty role triggers profile completion
-              phone: null, // Null phone triggers profile completion
-            });
-          }
-          return true;
-        } catch (error) {
-          console.error("Error in social sign in:", error);
-          return false;
-        }
-      }
-      return true;
-    },
     async jwt({ token, user, trigger, session }) {
       // Validating user from DB to ensure we have latest role/phone
       if (token.email) {

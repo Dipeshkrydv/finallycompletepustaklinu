@@ -111,12 +111,12 @@ export default function AdminDashboard() {
                     #{order.id}
                   </div>
                   <div>
-                    <p className="font-bold text-gray-800 line-clamp-1">{order.book?.title}</p>
-                    <p className="text-xs text-gray-500">{order.buyer?.email}</p>
+                    <p className="font-bold text-gray-800 line-clamp-1">{order.book?.title || 'Unknown Book'}</p>
+                    <p className="text-xs text-gray-500">{order.buyer?.email || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-gray-900">Rs. {order.totalAmount || order.book?.price}</p>
+                  <p className="font-bold text-gray-900">Rs. {order.totalAmount || order.book?.price || 0}</p>
                   <p className="text-xs text-amber-600 font-medium capitalize">{order.status}</p>
                 </div>
               </div>
