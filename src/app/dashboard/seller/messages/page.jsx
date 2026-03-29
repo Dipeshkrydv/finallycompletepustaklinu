@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { Send, User } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 export default function SellerMessages() {
